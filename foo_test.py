@@ -5,20 +5,12 @@ from hypothesis import strategies as st
 from foo import BinaryTreeDict
 
 
-
-# Helpers
-
-
 def make(*pairs) -> BinaryTreeDict:
     d = BinaryTreeDict()
     for k, v in pairs:
         d.set(k, v)
     return d
 
-
-# ---------------------------------------------------------------------------
-# size()
-# ---------------------------------------------------------------------------
 
 class TestSize(unittest.TestCase):
 
@@ -37,10 +29,6 @@ class TestSize(unittest.TestCase):
         d.set("x", 2)
         self.assertEqual(d.size(), 1)
 
-
-# ---------------------------------------------------------------------------
-# set() / get() / add()
-# ---------------------------------------------------------------------------
 
 class TestSetGet(unittest.TestCase):
 
@@ -96,10 +84,6 @@ class TestSetGet(unittest.TestCase):
         self.assertEqual(d.size(), 3)
 
 
-# ---------------------------------------------------------------------------
-# remove()
-# ---------------------------------------------------------------------------
-
 class TestRemove(unittest.TestCase):
 
     def test_remove_existing(self):
@@ -110,7 +94,7 @@ class TestRemove(unittest.TestCase):
 
     def test_remove_nonexistent_is_noop(self):
         d = make(("a", 1))
-        d.remove("zzz")          # must not raise
+        d.remove("zzz")
         self.assertEqual(d.size(), 1)
 
     def test_remove_none_key(self):
@@ -140,10 +124,6 @@ class TestRemove(unittest.TestCase):
         self.assertEqual(d.size(), 2)
 
 
-# ---------------------------------------------------------------------------
-# member()
-# ---------------------------------------------------------------------------
-
 class TestMember(unittest.TestCase):
 
     def test_not_member_empty(self):
@@ -162,10 +142,6 @@ class TestMember(unittest.TestCase):
         d.remove("a")
         self.assertFalse(d.member("a"))
 
-
-# ---------------------------------------------------------------------------
-# from_list() / to_list()
-# ---------------------------------------------------------------------------
 
 class TestConversion(unittest.TestCase):
 
@@ -200,10 +176,6 @@ class TestConversion(unittest.TestCase):
         self.assertEqual(d.get(1), "i")
 
 
-# ---------------------------------------------------------------------------
-# filter()
-# ---------------------------------------------------------------------------
-
 class TestFilter(unittest.TestCase):
 
     def test_filter_by_value(self):
@@ -232,10 +204,6 @@ class TestFilter(unittest.TestCase):
         self.assertEqual(d.size(), 0)
 
 
-# ---------------------------------------------------------------------------
-# map()
-# ---------------------------------------------------------------------------
-
 class TestMap(unittest.TestCase):
 
     def test_map_values(self):
@@ -252,10 +220,6 @@ class TestMap(unittest.TestCase):
         d.map(lambda v: "was-none" if v is None else v)
         self.assertEqual(d.get("k"), "was-none")
 
-
-# ---------------------------------------------------------------------------
-# reduce()
-# ---------------------------------------------------------------------------
 
 class TestReduce(unittest.TestCase):
 
@@ -278,10 +242,6 @@ class TestReduce(unittest.TestCase):
         count = d.reduce(lambda a, _: a + 1, 0)
         self.assertEqual(count, d.size())
 
-
-# ---------------------------------------------------------------------------
-# Iterator
-# ---------------------------------------------------------------------------
 
 class TestIterator(unittest.TestCase):
 
@@ -306,10 +266,6 @@ class TestIterator(unittest.TestCase):
         with self.assertRaises(StopIteration):
             next(it)
 
-
-# ---------------------------------------------------------------------------
-# Monoid
-# ---------------------------------------------------------------------------
 
 class TestMonoid(unittest.TestCase):
 
@@ -345,10 +301,6 @@ class TestMonoid(unittest.TestCase):
         self.assertTrue(d1.member(1))
 
 
-# ---------------------------------------------------------------------------
-# Property-Based Tests (Hypothesis)
-# ---------------------------------------------------------------------------
-
 _keys = st.one_of(st.none(), st.integers(), st.text(max_size=5))
 _values = st.one_of(st.none(), st.integers(), st.text(max_size=5))
 _pairs = st.lists(st.tuples(_keys, _values), max_size=20)
@@ -358,7 +310,6 @@ class TestPBT(unittest.TestCase):
 
     @given(_pairs)
     def test_pbt_from_list_roundtrip(self, pairs):
-        """All entries inserted via from_list() must be retrievable."""
         d = BinaryTreeDict()
         d.from_list(pairs)
         result = dict(d.to_list())
@@ -411,7 +362,6 @@ class TestPBT(unittest.TestCase):
     @given(_pairs, _pairs, _pairs)
     @settings(max_examples=50)
     def test_pbt_monoid_associativity(self, pa, pb, pc):
-        """(a⊕b)⊕c == a⊕(b⊕c)"""
         def build(pairs):
             d = BinaryTreeDict()
             d.from_list(pairs)
