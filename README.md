@@ -39,14 +39,12 @@ PBT tests:
 
 ## Contribution
 
-- Sida JIA 
+- Sida JIA -- all work.
 
 ## Changelog
 
-- 26.04.2025 - 1
-  - Add unit tests and PBT tests.
-- 26.04.2025 - 0
-  - Initial implementation: BinaryTreeDict with full API.
+- 26.04.2025 - 1: Add unit tests and PBT tests.
+- 26.04.2025 - 0: Initial implementation: BinaryTreeDict with full API.
 
 ## Design notes
 
