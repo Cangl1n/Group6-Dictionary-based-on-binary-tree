@@ -16,8 +16,9 @@ def make(*pairs) -> BinaryTreeDict:
     return d
 
 
+# ---------------------------------------------------------------------------
 # size()
-
+# ---------------------------------------------------------------------------
 
 class TestSize(unittest.TestCase):
 
@@ -37,9 +38,9 @@ class TestSize(unittest.TestCase):
         self.assertEqual(d.size(), 1)
 
 
-
+# ---------------------------------------------------------------------------
 # set() / get() / add()
-
+# ---------------------------------------------------------------------------
 
 class TestSetGet(unittest.TestCase):
 
@@ -95,8 +96,9 @@ class TestSetGet(unittest.TestCase):
         self.assertEqual(d.size(), 3)
 
 
-
+# ---------------------------------------------------------------------------
 # remove()
+# ---------------------------------------------------------------------------
 
 class TestRemove(unittest.TestCase):
 
@@ -138,9 +140,9 @@ class TestRemove(unittest.TestCase):
         self.assertEqual(d.size(), 2)
 
 
-
+# ---------------------------------------------------------------------------
 # member()
-
+# ---------------------------------------------------------------------------
 
 class TestMember(unittest.TestCase):
 
@@ -161,9 +163,9 @@ class TestMember(unittest.TestCase):
         self.assertFalse(d.member("a"))
 
 
-
+# ---------------------------------------------------------------------------
 # from_list() / to_list()
-
+# ---------------------------------------------------------------------------
 
 class TestConversion(unittest.TestCase):
 
@@ -198,9 +200,9 @@ class TestConversion(unittest.TestCase):
         self.assertEqual(d.get(1), "i")
 
 
-
+# ---------------------------------------------------------------------------
 # filter()
-
+# ---------------------------------------------------------------------------
 
 class TestFilter(unittest.TestCase):
 
@@ -230,8 +232,9 @@ class TestFilter(unittest.TestCase):
         self.assertEqual(d.size(), 0)
 
 
-
+# ---------------------------------------------------------------------------
 # map()
+# ---------------------------------------------------------------------------
 
 class TestMap(unittest.TestCase):
 
@@ -250,14 +253,15 @@ class TestMap(unittest.TestCase):
         self.assertEqual(d.get("k"), "was-none")
 
 
-
+# ---------------------------------------------------------------------------
 # reduce()
-
+# ---------------------------------------------------------------------------
 
 class TestReduce(unittest.TestCase):
 
     def test_reduce_empty(self):
-        self.assertEqual(BinaryTreeDict().reduce(lambda a, kv: a + kv[1], 0), 0)
+        result = BinaryTreeDict().reduce(lambda a, kv: a + kv[1], 0)
+        self.assertEqual(result, 0)
 
     def test_reduce_sum_values(self):
         d = make(("a", 1), ("b", 2), ("c", 3))
@@ -275,9 +279,9 @@ class TestReduce(unittest.TestCase):
         self.assertEqual(count, d.size())
 
 
-
+# ---------------------------------------------------------------------------
 # Iterator
-
+# ---------------------------------------------------------------------------
 
 class TestIterator(unittest.TestCase):
 
@@ -303,9 +307,9 @@ class TestIterator(unittest.TestCase):
             next(it)
 
 
-
+# ---------------------------------------------------------------------------
 # Monoid
-
+# ---------------------------------------------------------------------------
 
 class TestMonoid(unittest.TestCase):
 
@@ -341,9 +345,9 @@ class TestMonoid(unittest.TestCase):
         self.assertTrue(d1.member(1))
 
 
-
+# ---------------------------------------------------------------------------
 # Property-Based Tests (Hypothesis)
-
+# ---------------------------------------------------------------------------
 
 _keys = st.one_of(st.none(), st.integers(), st.text(max_size=5))
 _values = st.one_of(st.none(), st.integers(), st.text(max_size=5))
@@ -440,9 +444,11 @@ class TestPBT(unittest.TestCase):
 
     @given(_pairs)
     def test_pbt_filter_all_satisfy_predicate(self, pairs):
+        def pred(k, v):
+            return v is not None
+
         d = BinaryTreeDict()
         d.from_list(pairs)
-        pred = lambda k, v: v is not None
         d.filter(pred)
         for k, v in d.to_list():
             self.assertTrue(pred(k, v))
