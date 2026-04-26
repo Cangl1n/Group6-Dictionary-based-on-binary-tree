@@ -1,22 +1,12 @@
 """
-Lab 1 — Variant (6): Mutable Dictionary based on Binary Search Tree
+Lab 1 - Variant (6): Mutable Dictionary based on Binary Search Tree
 ====================================================================
 A mutable dictionary implemented using an unbalanced BST.
 
-Key design decisions:
-- Mixed-type keys (None, int, str, …) are supported via a stable
-  ordering function:  None < bool < int < float < str < other.
-- Duplicate keys update the value in-place (standard dict semantics).
-- All mutating methods operate in-place and return None.
-- concat() treats keys from `other` as overriding keys in `self`.
 """
 
 from __future__ import annotations
 from typing import Any, Callable, Iterator, Optional
-
-
-
-# Ordering helpers for heterogeneous keys
 
 
 def _type_rank(key: Any) -> int:
@@ -40,7 +30,7 @@ def _key_lt(a: Any, b: Any) -> bool:
     if a is None:
         return False
     try:
-        return a < b   # type: ignore[operator]
+        return a < b  # type: ignore[operator]
     except TypeError:
         return repr(a) < repr(b)
 
@@ -53,22 +43,14 @@ def _key_eq(a: Any, b: Any) -> bool:
     return a == b
 
 
-
-# Internal BST node
-
-
 class _Node:
     __slots__ = ("key", "value", "left", "right")
 
     def __init__(self, key: Any, value: Any) -> None:
         self.key = key
         self.value = value
-        self.left:  Optional[_Node] = None
+        self.left: Optional[_Node] = None
         self.right: Optional[_Node] = None
-
-
-
-# Public class
 
 
 class BinaryTreeDict:
@@ -77,16 +59,12 @@ class BinaryTreeDict:
     def __init__(self) -> None:
         self._root: Optional[_Node] = None
 
-
-    #  Insert / update                                                     #
-
-
     def add(self, key: Any, value: Any) -> None:
         """Add or update an entry. Alias for set()."""
         self.set(key, value)
 
     def set(self, key: Any, value: Any) -> None:
-        """Set key → value. Inserts if new; overwrites if key exists."""
+        """Set key to value. Inserts if new; overwrites if key exists."""
         self._root = self._insert(self._root, key, value)
 
     def _insert(self, node: Optional[_Node], key: Any, value: Any) -> _Node:
@@ -99,10 +77,6 @@ class BinaryTreeDict:
         else:
             node.right = self._insert(node.right, key, value)
         return node
-
-
-    #  Lookup                                                              #
-
 
     def get(self, key: Any, default: Any = None) -> Any:
         """Return value for key, or default if absent."""
@@ -131,10 +105,6 @@ class BinaryTreeDict:
             return 0
         return 1 + self._size(node.left) + self._size(node.right)
 
-
-    #  Deletion                                                            #
-
-
     def remove(self, key: Any) -> None:
         """Remove key. No-op if key is absent."""
         self._root = self._delete(self._root, key)
@@ -147,7 +117,6 @@ class BinaryTreeDict:
                 return node.right
             if node.right is None:
                 return node.left
-            # Two children: replace with in-order successor
             succ = self._min_node(node.right)
             node.key, node.value = succ.key, succ.value
             node.right = self._delete(node.right, succ.key)
@@ -162,10 +131,6 @@ class BinaryTreeDict:
         while cur.left is not None:
             cur = cur.left
         return cur
-
-
-    #  Conversion                                                          #
-
 
     def to_list(self) -> list:
         """Return all (key, value) pairs in ascending key order."""
@@ -185,10 +150,6 @@ class BinaryTreeDict:
         self._root = None
         for key, value in lst:
             self.set(key, value)
-
-
-    #  Functional operations                                               #
-
 
     def filter(self, predicate: Callable[[Any, Any], bool]) -> None:
         """Keep only entries where predicate(key, value) is True."""
@@ -211,16 +172,12 @@ class BinaryTreeDict:
     def reduce(self, func: Callable[[Any, tuple], Any], initial: Any) -> Any:
         """Left-fold over (key, value) pairs in in-order sequence.
 
-        func(accumulator, (key, value)) → new_accumulator
+        func(accumulator, (key, value)) -> new_accumulator
         """
         state = initial
         for kv in self.to_list():
             state = func(state, kv)
         return state
-
-
-    #  Iterator (yields keys in sorted order)                             #
-
 
     def __iter__(self) -> Iterator:
         self._iter_stack: list = []
@@ -238,10 +195,6 @@ class BinaryTreeDict:
             return key
         raise StopIteration
 
-
-    #  Monoid                                                              #
-
-
     @staticmethod
     def empty() -> "BinaryTreeDict":
         """Identity element of the monoid."""
@@ -251,19 +204,17 @@ class BinaryTreeDict:
         """Merge other into self. Keys from other override keys in self.
 
         Satisfies monoid laws:
-          left identity  : empty().concat(d)  ≡ d
-          right identity : d.concat(empty())  ≡ d
-          associativity  : (a⊕b)⊕c           ≡ a⊕(b⊕c)
+          left identity  : empty().concat(d)  == d
+          right identity : d.concat(empty())  == d
+          associativity  : (a+b)+c            == a+(b+c)
         """
         for k, v in other.to_list():
             self.set(k, v)
 
-
-    #  Display                                                             #
-
-
     def __str__(self) -> str:
-        inner = ", ".join(f"{repr(k)}: {repr(v)}" for k, v in self.to_list())
+        inner = ", ".join(
+            f"{repr(k)}: {repr(v)}" for k, v in self.to_list()
+        )
         return "{" + inner + "}"
 
     def __repr__(self) -> str:
