@@ -2,7 +2,26 @@ import unittest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from foo import BinaryTreeDict
+from binary_tree_dict import BinaryTreeDict
+
+
+# --------------- Hypothesis strategies ---------------
+
+_keys = st.one_of(st.none(), st.integers(), st.text(max_size=5))
+_values = st.one_of(st.none(), st.integers(), st.text(max_size=5))
+_pairs = st.lists(st.tuples(_keys, _values), max_size=20)
+
+
+@st.composite
+def binary_tree_dicts(draw: st.DrawFn) -> BinaryTreeDict:
+    """Generate arbitrary BinaryTreeDict instances."""
+    pairs = draw(_pairs)
+    d = BinaryTreeDict()
+    d.from_list(pairs)
+    return d
+
+
+# --------------- Helpers ---------------
 
 
 def make(*pairs) -> BinaryTreeDict:
@@ -267,6 +286,27 @@ class TestIterator(unittest.TestCase):
             next(it)
 
 
+class TestEq(unittest.TestCase):
+
+    def test_empty_dicts_equal(self):
+        self.assertEqual(BinaryTreeDict(), BinaryTreeDict())
+
+    def test_same_entries_equal(self):
+        self.assertEqual(make(("a", 1), ("b", 2)), make(("a", 1), ("b", 2)))
+
+    def test_different_values_not_equal(self):
+        self.assertNotEqual(make(("a", 1)), make(("a", 99)))
+
+    def test_different_sizes_not_equal(self):
+        self.assertNotEqual(make(("a", 1)), make(("a", 1), ("b", 2)))
+
+    def test_eq_with_none_key(self):
+        self.assertEqual(make((None, "x")), make((None, "x")))
+
+    def test_neq_with_non_dict(self):
+        self.assertNotEqual(make(("a", 1)), {"a": 1})
+
+
 class TestMonoid(unittest.TestCase):
 
     def test_empty_has_zero_size(self):
@@ -299,11 +339,6 @@ class TestMonoid(unittest.TestCase):
         d1.concat(make((1, "b")))
         self.assertTrue(d1.member(None))
         self.assertTrue(d1.member(1))
-
-
-_keys = st.one_of(st.none(), st.integers(), st.text(max_size=5))
-_values = st.one_of(st.none(), st.integers(), st.text(max_size=5))
-_pairs = st.lists(st.tuples(_keys, _values), max_size=20)
 
 
 class TestPBT(unittest.TestCase):
@@ -342,66 +377,70 @@ class TestPBT(unittest.TestCase):
         d.remove(key)
         self.assertFalse(d.member(key))
 
-    @given(_pairs)
-    def test_pbt_monoid_right_identity(self, pairs):
-        d = BinaryTreeDict()
-        d.from_list(pairs)
-        before = dict(d.to_list())
+    @given(binary_tree_dicts())
+    def test_pbt_monoid_right_identity(self, d):
+        before = d.to_list()
         d.concat(BinaryTreeDict.empty())
-        self.assertEqual(dict(d.to_list()), before)
+        self.assertEqual(d.to_list(), before)
 
-    @given(_pairs)
-    def test_pbt_monoid_left_identity(self, pairs):
-        d = BinaryTreeDict()
-        d.from_list(pairs)
-        expected = dict(d.to_list())
+    @given(binary_tree_dicts())
+    def test_pbt_monoid_left_identity(self, d):
+        expected = d.to_list()
         e = BinaryTreeDict.empty()
         e.concat(d)
-        self.assertEqual(dict(e.to_list()), expected)
+        self.assertEqual(e.to_list(), expected)
 
-    @given(_pairs, _pairs, _pairs)
+    @given(binary_tree_dicts(), binary_tree_dicts(), binary_tree_dicts())
     @settings(max_examples=50)
-    def test_pbt_monoid_associativity(self, pa, pb, pc):
-        def build(pairs):
-            d = BinaryTreeDict()
-            d.from_list(pairs)
-            return d
+    def test_pbt_monoid_associativity(self, da, db, dc):
+        def clone(d):
+            c = BinaryTreeDict()
+            c.from_list(d.to_list())
+            return c
 
-        left = build(pa)
-        left.concat(build(pb))
-        left.concat(build(pc))
+        left = clone(da)
+        left.concat(clone(db))
+        left.concat(clone(dc))
 
-        bc = build(pb)
-        bc.concat(build(pc))
-        right = build(pa)
+        bc = clone(db)
+        bc.concat(clone(dc))
+        right = clone(da)
         right.concat(bc)
 
-        self.assertEqual(dict(left.to_list()), dict(right.to_list()))
+        self.assertEqual(left.to_list(), right.to_list())
 
-    @given(_pairs)
-    def test_pbt_iter_yields_all_keys(self, pairs):
-        d = BinaryTreeDict()
-        d.from_list(pairs)
-        self.assertEqual(set(d), {k for k, _ in pairs})
+    @given(binary_tree_dicts())
+    def test_pbt_iter_yields_all_keys(self, d):
+        expected = {k for k, _ in d.to_list()}
+        self.assertEqual(set(d), expected)
 
-    @given(_pairs)
-    def test_pbt_map_identity(self, pairs):
-        d = BinaryTreeDict()
-        d.from_list(pairs)
-        before = dict(d.to_list())
+    @given(binary_tree_dicts())
+    def test_pbt_map_identity(self, d):
+        before = d.to_list()
         d.map(lambda v: v)
-        self.assertEqual(dict(d.to_list()), before)
+        self.assertEqual(d.to_list(), before)
 
-    @given(_pairs)
-    def test_pbt_filter_all_satisfy_predicate(self, pairs):
+    @given(binary_tree_dicts())
+    def test_pbt_filter_all_satisfy_predicate(self, d):
         def pred(k, v):
             return v is not None
 
-        d = BinaryTreeDict()
-        d.from_list(pairs)
+        original_size = d.size()
         d.filter(pred)
+        self.assertLessEqual(d.size(), original_size)
         for k, v in d.to_list():
             self.assertTrue(pred(k, v))
+
+    @given(binary_tree_dicts(), binary_tree_dicts())
+    def test_pbt_eq_reflexive(self, d1, d2):
+        c = BinaryTreeDict()
+        c.from_list(d1.to_list())
+        self.assertEqual(d1, c)
+
+    @given(binary_tree_dicts())
+    def test_pbt_size_via_reduce(self, d):
+        count = d.reduce(lambda a, _: a + 1, 0)
+        self.assertEqual(count, d.size())
 
 
 if __name__ == "__main__":
