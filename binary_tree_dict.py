@@ -1,12 +1,9 @@
 """
 Lab 1 - Variant (6): Mutable Dictionary based on Binary Search Tree
-====================================================================
-A mutable dictionary implemented using an unbalanced BST.
-
 """
 
 from __future__ import annotations
-from typing import Any, Callable, Iterator, Optional
+from typing import Any, Callable, Iterator, List, Optional, Tuple
 
 
 def _type_rank(key: Any) -> int:
@@ -47,8 +44,8 @@ class _Node:
     __slots__ = ("key", "value", "left", "right")
 
     def __init__(self, key: Any, value: Any) -> None:
-        self.key = key
-        self.value = value
+        self.key: Any = key
+        self.value: Any = value
         self.left: Optional[_Node] = None
         self.right: Optional[_Node] = None
 
@@ -67,7 +64,9 @@ class BinaryTreeDict:
         """Set key to value. Inserts if new; overwrites if key exists."""
         self._root = self._insert(self._root, key, value)
 
-    def _insert(self, node: Optional[_Node], key: Any, value: Any) -> _Node:
+    def _insert(
+        self, node: Optional[_Node], key: Any, value: Any
+    ) -> _Node:
         if node is None:
             return _Node(key, value)
         if _key_eq(key, node.key):
@@ -83,7 +82,9 @@ class BinaryTreeDict:
         node = self._find(self._root, key)
         return node.value if node is not None else default
 
-    def _find(self, node: Optional[_Node], key: Any) -> Optional[_Node]:
+    def _find(
+        self, node: Optional[_Node], key: Any
+    ) -> Optional[_Node]:
         if node is None:
             return None
         if _key_eq(key, node.key):
@@ -109,7 +110,9 @@ class BinaryTreeDict:
         """Remove key. No-op if key is absent."""
         self._root = self._delete(self._root, key)
 
-    def _delete(self, node: Optional[_Node], key: Any) -> Optional[_Node]:
+    def _delete(
+        self, node: Optional[_Node], key: Any
+    ) -> Optional[_Node]:
         if node is None:
             return None
         if _key_eq(key, node.key):
@@ -132,26 +135,30 @@ class BinaryTreeDict:
             cur = cur.left
         return cur
 
-    def to_list(self) -> list:
+    def to_list(self) -> List[Tuple[Any, Any]]:
         """Return all (key, value) pairs in ascending key order."""
-        result: list = []
+        result: List[Tuple[Any, Any]] = []
         self._inorder(self._root, result)
         return result
 
-    def _inorder(self, node: Optional[_Node], result: list) -> None:
+    def _inorder(
+        self, node: Optional[_Node], result: List[Tuple[Any, Any]]
+    ) -> None:
         if node is None:
             return
         self._inorder(node.left, result)
         result.append((node.key, node.value))
         self._inorder(node.right, result)
 
-    def from_list(self, lst: list) -> None:
+    def from_list(self, lst: List[Tuple[Any, Any]]) -> None:
         """Load from a list of (key, value) tuples. Later entries win."""
         self._root = None
         for key, value in lst:
             self.set(key, value)
 
-    def filter(self, predicate: Callable[[Any, Any], bool]) -> None:
+    def filter(
+        self, predicate: Callable[[Any, Any], bool]
+    ) -> None:
         """Keep only entries where predicate(key, value) is True."""
         keep = [(k, v) for k, v in self.to_list() if predicate(k, v)]
         self._root = None
@@ -162,14 +169,20 @@ class BinaryTreeDict:
         """Apply func to every value in-place."""
         self._map_node(self._root, func)
 
-    def _map_node(self, node: Optional[_Node], func: Callable) -> None:
+    def _map_node(
+        self, node: Optional[_Node], func: Callable[[Any], Any]
+    ) -> None:
         if node is None:
             return
         node.value = func(node.value)
         self._map_node(node.left, func)
         self._map_node(node.right, func)
 
-    def reduce(self, func: Callable[[Any, tuple], Any], initial: Any) -> Any:
+    def reduce(
+        self,
+        func: Callable[[Any, Tuple[Any, Any]], Any],
+        initial: Any,
+    ) -> Any:
         """Left-fold over (key, value) pairs in in-order sequence.
 
         func(accumulator, (key, value)) -> new_accumulator
@@ -179,8 +192,8 @@ class BinaryTreeDict:
             state = func(state, kv)
         return state
 
-    def __iter__(self) -> Iterator:
-        self._iter_stack: list = []
+    def __iter__(self) -> Iterator[Any]:
+        self._iter_stack: List[_Node] = []
         self._iter_cur: Optional[_Node] = self._root
         return self
 
@@ -221,6 +234,46 @@ class BinaryTreeDict:
         return f"BinaryTreeDict({str(self)})"
 
     def __eq__(self, other: object) -> bool:
+        """Efficient equality: simultaneous in-order traversal.
+
+        Avoids building two full lists; exits as soon as a difference
+        is found, giving O(k) time where k is the position of the
+        first differing element.
+        """
         if not isinstance(other, BinaryTreeDict):
             return NotImplemented
-        return self.to_list() == other.to_list()
+        left_iter = _InorderIter(self._root)
+        right_iter = _InorderIter(other._root)
+        while True:
+            lv = next(left_iter, None)
+            rv = next(right_iter, None)
+            if lv is None and rv is None:
+                return True
+            if lv is None or rv is None:
+                return False
+            lk, lval = lv
+            rk, rval = rv
+            if not _key_eq(lk, rk) or lval != rval:
+                return False
+
+
+class _InorderIter:
+    """Iterates (key, value) pairs of a BST in ascending key order."""
+
+    def __init__(self, root: Optional[_Node]) -> None:
+        self._stack: List[_Node] = []
+        self._cur: Optional[_Node] = root
+
+    def __iter__(self) -> "_InorderIter":
+        return self
+
+    def __next__(self) -> Optional[Tuple[Any, Any]]:
+        while self._cur is not None or self._stack:
+            while self._cur is not None:
+                self._stack.append(self._cur)
+                self._cur = self._cur.left
+            self._cur = self._stack.pop()
+            pair: Tuple[Any, Any] = (self._cur.key, self._cur.value)
+            self._cur = self._cur.right
+            return pair
+        raise StopIteration
